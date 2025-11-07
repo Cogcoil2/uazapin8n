@@ -9,12 +9,24 @@ Automated WhatsApp instance creation and QR code delivery system using n8n and U
 ## 🚀 Quick Start
 
 ### 1. Import to n8n
+
+**Choose the right workflow file:**
+
+| File | Description | Use When |
+|------|-------------|----------|
+| `n8n_workflow_simple.json` | ⭐ **Start here** - Simple 4-node workflow | Testing or learning |
+| `n8n_workflow_qr_sender_v2.json` | Full auto-loop workflow (compatible) | Production use |
+| `n8n_workflow_qr_sender.json` | Original (may have issues) | n8n latest version |
+
+**Import steps:**
 ```bash
 1. Open n8n
 2. Click "+" → "Import from File"
-3. Upload: n8n_workflow_qr_sender.json
+3. Upload: n8n_workflow_simple.json (recommended for first try)
 4. Click "Active" toggle
 ```
+
+**Having import issues?** See [IMPORT_FIX.md](IMPORT_FIX.md) for solutions.
 
 ### 2. Configure Your Instance
 Update the connected instance token in the workflow:
@@ -41,14 +53,27 @@ This workflow automatically:
 
 ## 📂 Files
 
+### n8n Workflows
 | File | Description |
 |------|-------------|
-| `n8n_workflow_qr_sender.json` | Main n8n workflow (import this) |
-| `README_SUMMARY.md` | Complete overview |
+| `n8n_workflow_simple.json` | ⭐ **Simple workflow** - 4 nodes, easy import |
+| `n8n_workflow_qr_sender_v2.json` | Full workflow with auto-loop (compatible) |
+| `n8n_workflow_qr_sender.json` | Original workflow (advanced) |
+
+### Documentation
+| File | Description |
+|------|-------------|
+| `README_SUMMARY.md` | Complete overview and quick start |
+| `IMPORT_FIX.md` | ⚠️ **Fix import errors** - Troubleshooting guide |
 | `WORKFLOW_QUICK_START.md` | Quick setup guide |
-| `N8N_WORKFLOW_GUIDE.md` | Detailed documentation |
+| `N8N_WORKFLOW_GUIDE.md` | Detailed node-by-node documentation |
 | `UAZAPI_README.md` | Complete API reference |
+
+### Python Scripts
+| File | Description |
+|------|-------------|
 | `uazapi_whatsapp.py` | Python client library |
+| `uazapi_client.py` | Advanced client with endpoint discovery |
 | `send_qr_via_whatsapp.py` | Manual QR sending example |
 
 ## 🔧 How It Works
