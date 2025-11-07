@@ -1,0 +1,120 @@
+{
+  "name": "UAZAPI Simple QR Sender",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "create-whatsapp",
+        "responseMode": "lastNode"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chatsheros.uazapi.com/instance/create",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "admintoken",
+              "value": "TPWVDMxqpcsBpKahh0B3ec1f4V8OVy1GvRCDunxHzilvmZxAv8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"name\": \"instance_\" + $now.toUnixInteger()}",
+        "options": {}
+      },
+      "name": "Create Instance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chatsheros.uazapi.com/instance/connect",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{$json.token}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={}",
+        "options": {}
+      },
+      "name": "Get QR Code",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chatsheros.uazapi.com/send/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "f5b12fac-c0ce-4c10-92eb-e24dc138230c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"number\": $('Webhook').item.json.body.phone, \"image\": $json.instance.qrcode, \"caption\": \"Scan this QR code to connect WhatsApp\"}",
+        "options": {}
+      },
+      "name": "Send QR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create Instance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Instance": {
+      "main": [
+        [
+          {
+            "node": "Get QR Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get QR Code": {
+      "main": [
+        [
+          {
+            "node": "Send QR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
