@@ -1,0 +1,464 @@
+{
+  "name": "UAZAPI - Auto QR Sender",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "create-whatsapp-instance",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "create-whatsapp-instance"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chatsheros.uazapi.com/instance/create",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "admintoken",
+              "value": "TPWVDMxqpcsBpKahh0B3ec1f4V8OVy1GvRCDunxHzilvmZxAv8"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"name\": \"instance_\" + $now.toUnixInteger()} }}",
+        "options": {}
+      },
+      "id": "create-instance",
+      "name": "Create Instance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chatsheros.uazapi.com/instance/connect",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={}",
+        "options": {}
+      },
+      "id": "connect-get-qr",
+      "name": "Connect Get QR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "new_instance_token",
+              "value": "={{ $('Create Instance').item.json.token }}"
+            },
+            {
+              "name": "new_instance_id",
+              "value": "={{ $('Create Instance').item.json.instance.id }}"
+            },
+            {
+              "name": "recipient_phone",
+              "value": "={{ $('Webhook').item.json.body.phone }}"
+            },
+            {
+              "name": "qr_code",
+              "value": "={{ $json.instance.qrcode }}"
+            },
+            {
+              "name": "connected_instance_token",
+              "value": "f5b12fac-c0ce-4c10-92eb-e24dc138230c"
+            }
+          ],
+          "number": [
+            {
+              "name": "attempt_count",
+              "value": 1
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-variables",
+      "name": "Set Variables",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://chatsheros.uazapi.com/instance/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $('Set Variables').item.json.new_instance_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-status",
+      "name": "Check Instance Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1130, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.instance.status }}",
+              "operation": "equals",
+              "value2": "connected"
+            }
+          ]
+        }
+      },
+      "id": "is-connected-check",
+      "name": "Is Connected",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1350, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Your device has been connected!\", \"instance_id\": $('Set Variables').item.json.new_instance_id, \"status\": \"connected\" } }}",
+        "options": {}
+      },
+      "id": "respond-connected",
+      "name": "Respond Connected",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1570, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $('Set Variables').item.json.attempt_count }}",
+              "operation": "largerEqual",
+              "value2": 10
+            }
+          ]
+        }
+      },
+      "id": "max-attempts-check",
+      "name": "Max Attempts Reached",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1570, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": false, \"message\": \"Maximum attempts reached. QR code expired.\", \"attempts\": $('Set Variables').item.json.attempt_count, \"last_status\": $('Check Instance Status').item.json.instance.status } }}",
+        "options": {}
+      },
+      "id": "respond-max-attempts",
+      "name": "Respond Max Attempts",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1790, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chatsheros.uazapi.com/send/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $('Set Variables').item.json.connected_instance_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"number\": $('Set Variables').item.json.recipient_phone, \"image\": $('Check Instance Status').item.json.instance.qrcode, \"caption\": \"🔐 WhatsApp QR Code - Attempt \" + $('Set Variables').item.json.attempt_count + \"/10\\n\\nScan this code with your WhatsApp to connect.\\n\\nThis code will refresh in 1 minute.\" } }}",
+        "options": {}
+      },
+      "id": "send-qr-whatsapp",
+      "name": "Send QR via WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1790, 520]
+    },
+    {
+      "parameters": {
+        "amount": 60,
+        "unit": "seconds"
+      },
+      "id": "wait-1-minute",
+      "name": "Wait 1 Minute",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [2010, 520],
+      "webhookId": "wait-qr-refresh"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "new_instance_token",
+              "value": "={{ $('Set Variables').item.json.new_instance_token }}"
+            },
+            {
+              "name": "new_instance_id",
+              "value": "={{ $('Set Variables').item.json.new_instance_id }}"
+            },
+            {
+              "name": "recipient_phone",
+              "value": "={{ $('Set Variables').item.json.recipient_phone }}"
+            },
+            {
+              "name": "connected_instance_token",
+              "value": "={{ $('Set Variables').item.json.connected_instance_token }}"
+            }
+          ],
+          "number": [
+            {
+              "name": "attempt_count",
+              "value": "={{ $('Set Variables').item.json.attempt_count + 1 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "increment-counter",
+      "name": "Increment Counter",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [2230, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chatsheros.uazapi.com/instance/connect",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $json.new_instance_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={}",
+        "options": {}
+      },
+      "id": "refresh-qr",
+      "name": "Refresh QR Code",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [2450, 520]
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "input1"
+      },
+      "id": "loop-back",
+      "name": "Loop Back",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [2670, 420]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create Instance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Instance": {
+      "main": [
+        [
+          {
+            "node": "Connect Get QR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Connect Get QR": {
+      "main": [
+        [
+          {
+            "node": "Set Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Variables": {
+      "main": [
+        [
+          {
+            "node": "Check Instance Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Instance Status": {
+      "main": [
+        [
+          {
+            "node": "Is Connected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Connected": {
+      "main": [
+        [
+          {
+            "node": "Respond Connected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Max Attempts Reached",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Max Attempts Reached": {
+      "main": [
+        [
+          {
+            "node": "Respond Max Attempts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send QR via WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send QR via WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Wait 1 Minute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1 Minute": {
+      "main": [
+        [
+          {
+            "node": "Increment Counter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Increment Counter": {
+      "main": [
+        [
+          {
+            "node": "Refresh QR Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh QR Code": {
+      "main": [
+        [
+          {
+            "node": "Loop Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Back": {
+      "main": [
+        [
+          {
+            "node": "Check Instance Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
